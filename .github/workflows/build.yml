@@ -27,6 +27,7 @@ jobs:
 
       - name: Build with Gradle
         run: |
+          cd winlator_src
           chmod +x gradlew
           ./gradlew assembleRelease
 
