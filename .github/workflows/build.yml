@@ -11,21 +11,20 @@ jobs:
       - name: Checkout Your Files
         uses: actions/checkout@v4
 
-      - name: Download Winlator Source
+      - name: Download and Merge Winlator
         run: |
           wget https://github.com/brunodev85/winlator/archive/refs/heads/main.zip
           unzip -q main.zip
-          # Move everything from the unzipped folder to here
-          cp -rf winlator-main/* .
+          # The dot after 'winlator-main/.' is the secret trick to move hidden files
+          cp -rf winlator-main/. .
           rm -rf winlator-main main.zip
 
       - name: Inject Custom Java Files
         run: |
-          # This takes your modified files and forces them into the correct folder
-          # We use 'find' to make sure we hit the right destination
-          DEST=$(find app/src/main/java -name "core" -type d)
-          cp -f MemoryManagerService.java $DEST/ || true
-          cp -f thermal_patch.java $DEST/ || true
+          # Finding the exact folder to place your modded files
+          CORE_DIR=$(find app/src/main/java -name "core" -type d | head -n 1)
+          cp -f MemoryManagerService.java "$CORE_DIR/" || true
+          cp -f thermal_patch.java "$CORE_DIR/" || true
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -35,6 +34,8 @@ jobs:
 
       - name: Build APK
         run: |
+          # Checking if the file exists before running
+          ls -la gradlew
           chmod +x gradlew
           ./gradlew assembleRelease
 
