@@ -1,43 +1,89 @@
-name: Android Build
+name: Build Winlator APK
+
 on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    
     steps:
-      - name: Checkout Your Repo
-        uses: actions/checkout@v4
-
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-
-      - name: Prepare Winlator Source
-        run: |
-          # 1. Download and extract
-          curl -L https://github.com/brunodev85/winlator/archive/refs/heads/main.zip -o source.zip
-          unzip -q source.zip
-          
-          # 2. Force move everything (including hidden files) to the root
-          # This makes settings.gradle visible to the build tool
-          cp -rf winlator-main/. .
-          
-          # 3. Inject your custom files
-          mkdir -p app/src/main/java/com/winlator/core
-          cp -f MemoryManagerService.java app/src/main/java/com/winlator/core/
-          cp -f thermal_patch.java app/src/main/java/com/winlator/core/
-
-      - name: Build APK
-        run: |
-          # Use the local wrapper which is now definitely in the root
-          chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: Winlator-Modded
-          path: app/build/outputs/apk/release/*.apk
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        path: repo-files
+    
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+    
+    - name: Download Winlator source
+      run: |
+        wget https://github.com/brunodev85/winlator/archive/refs/heads/main.zip -O winlator.zip
+        unzip winlator.zip
+    
+    - name: Flatten directory structure (including hidden files)
+      run: |
+        # Move all contents from winlator-main to workspace root
+        shopt -s dotglob
+        mv winlator-main/* ./
+        rmdir winlator-main
+        
+        # Verify the structure
+        echo "Root directory contents:"
+        ls -la
+        
+        echo "Checking for settings.gradle:"
+        if [ -f "settings.gradle" ]; then
+          echo "✓ settings.gradle found"
+        else
+          echo "✗ settings.gradle NOT found"
+          exit 1
+        fi
+        
+        echo "Checking for gradlew:"
+        if [ -f "gradlew" ]; then
+          echo "✓ gradlew found"
+        else
+          echo "✗ gradlew NOT found"
+          exit 1
+        fi
+    
+    - name: Inject custom files
+      run: |
+        # Create target directory if it doesn't exist
+        mkdir -p app/src/main/java/com/winlator/core/
+        
+        # Copy the custom files from your repo
+        cp repo-files/MemoryManagerService.java app/src/main/java/com/winlator/core/
+        cp repo-files/thermal_patch.java app/src/main/java/com/winlator/core/
+        
+        # Verify files were copied
+        echo "Verifying injected files:"
+        ls -l app/src/main/java/com/winlator/core/ | grep -E "(MemoryManagerService|thermal_patch)"
+    
+    - name: Make gradlew executable
+      run: chmod +x ./gradlew
+    
+    - name: Build with Gradle
+      run: ./gradlew assembleRelease --stacktrace
+    
+    - name: Upload APK artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: winlator-release-apk
+        path: app/build/outputs/apk/release/*.apk
+        if-no-files-found: error
+    
+    - name: Display build summary
+      if: success()
+      run: |
+        echo "✓ Build completed successfully!"
+        echo "APK files generated:"
+        ls -lh app/build/outputs/apk/release/*.apk
