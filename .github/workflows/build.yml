@@ -14,7 +14,9 @@ jobs:
       - name: Clone Winlator
         run: |
           export GIT_LFS_SKIP_SMUDGE=1
-          git clone --depth 1 https://github.com/brunodev85/winlator.git .
+          git clone --depth 1 https://github.com/brunodev85/winlator.git temp_dir
+          cp -r temp_dir/* .
+          rm -rf temp_dir
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
