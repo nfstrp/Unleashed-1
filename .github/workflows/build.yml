@@ -1,46 +1,43 @@
 name: Android Build
 on:
-  push:
-    branches: [ main, master ]
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Your Files
+      - name: Checkout Your Repo
         uses: actions/checkout@v4
 
-      - name: Download and Prepare Winlator
-        run: |
-          # 1. Download the source zip
-          curl -L https://github.com/brunodev85/winlator/archive/refs/heads/main.zip -o source.zip
-          unzip -q source.zip
-          
-          # 2. Rename the folder to something simple
-          mv winlator-main winlator-src
-
-      - name: Set up JDK 17
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Inject and Build
+      - name: Prepare Project
         run: |
-          # 1. Inject mods (using full paths to be safe)
-          CORE_DIR="winlator-src/app/src/main/java/com/winlator/core"
-          echo "Injecting into $CORE_DIR"
-          cp -f MemoryManagerService.java "$CORE_DIR/" || echo "Mod 1 skipped"
-          cp -f thermal_patch.java "$CORE_DIR/" || echo "Mod 2 skipped"
+          # 1. Download and unzip
+          curl -L https://github.com/brunodev85/winlator/archive/refs/heads/main.zip -o source.zip
+          unzip -q source.zip
           
-          # 2. Build using the system Gradle
-          # We tell it exactly where the project is
-          cd winlator-src
-          gradle assembleRelease --no-daemon
+          # 2. CLEAR THE ROOT and move winlator files there
+          # This ensures settings.gradle is exactly where Gradle looks
+          cp -rf winlator-main/* .
+          
+          # 3. Inject your custom files into the now-flat structure
+          CORE_PATH="app/src/main/java/com/winlator/core"
+          cp -f MemoryManagerService.java "$CORE_PATH/"
+          cp -f thermal_patch.java "$CORE_PATH/"
 
-      - name: Upload APK
+      - name: Build APK
+        run: |
+          # Use the wrapper that comes with Winlator
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+
+      - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Winlator-Custom-APK
-          path: winlator-src/app/build/outputs/apk/release/*.apk
+          name: Winlator-Modded
+          path: app/build/outputs/apk/release/*.apk
