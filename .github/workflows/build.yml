@@ -41,7 +41,9 @@ jobs:
       run: chmod +x gradlew
 
     - name: Build with Gradle
-      run: ./gradlew assembleRelease
+      run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease
 
     - name: Sign APK (Optional - using debug key for now)
       run: |
