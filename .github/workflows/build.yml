@@ -11,10 +11,16 @@ jobs:
       - name: Checkout Your Files
         uses: actions/checkout@v4
 
-      - name: Download Source
+      - name: Download and Diagnose
         run: |
-          wget https://github.com/brunodev85/winlator/archive/refs/heads/main.zip
+          # 1. Download
+          curl -L https://github.com/brunodev85/winlator/archive/refs/heads/main.zip -o main.zip
           unzip -q main.zip
+          
+          # 2. SHOW ME EVERYTHING (This helps us debug)
+          echo "--- FOLDER STRUCTURE START ---"
+          find . -maxdepth 3 -not -path '*/.*'
+          echo "--- FOLDER STRUCTURE END ---"
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -22,24 +28,28 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Locate Parent and Build
+      - name: Final Boss Build Attempt
         run: |
-          # 1. We look for 'settings.gradle' which is ONLY in the root folder
-          PROJECT_ROOT=$(find . -name settings.gradle -type f | head -n 1 | xargs dirname)
-          echo "Moving to CORRECT root: $PROJECT_ROOT"
+          # Find the folder containing 'settings.gradle'
+          CONF_FILE=$(find . -name "settings.gradle" | head -n 1)
+          
+          if [ -z "$CONF_FILE" ]; then
+            echo "CRITICAL ERROR: settings.gradle not found anywhere!"
+            exit 1
+          fi
+
+          PROJECT_ROOT=$(dirname "$CONF_FILE")
+          echo "Moving to: $PROJECT_ROOT"
           cd "$PROJECT_ROOT"
 
-          # 2. Now that we are in the root, we can find the core folder correctly
-          # The path is definitely 'app/src/main/java/...' relative to here
-          CORE_DIR=$(find app/src/main/java -name "core" -type d | head -n 1)
-          
-          echo "Injecting mods into: $CORE_DIR"
-          # Copy files from the GitHub Workspace (where your repo files are)
-          cp -f $GITHUB_WORKSPACE/MemoryManagerService.java "$CORE_DIR/" || echo "No MemoryManager found"
-          cp -f $GITHUB_WORKSPACE/thermal_patch.java "$CORE_DIR/" || echo "No ThermalPatch found"
+          # Inject Mods
+          CORE_DIR=$(find . -type d -name "core" | grep "com/winlator" | head -n 1)
+          if [ -n "$CORE_DIR" ]; then
+            cp -f $GITHUB_WORKSPACE/MemoryManagerService.java "$CORE_DIR/" || true
+            cp -f $GITHUB_WORKSPACE/thermal_patch.java "$CORE_DIR/" || true
+          fi
 
-          # 3. Build using Global Gradle
-          # We use the global tool because it's more reliable than the wrapper here
+          # Build
           gradle assembleRelease --no-daemon
 
       - name: Upload APK
