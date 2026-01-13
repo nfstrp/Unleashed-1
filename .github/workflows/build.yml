@@ -22,19 +22,32 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Force Build inside winlator-main
+      - name: The Final Stand
         run: |
-          # 1. Enter the specific folder we know exists
-          cd winlator-main
+          # 1. FIND the project root (where settings.gradle is)
+          # We search deep to find the real heart of the project
+          CONF_FILE=$(find . -name "settings.gradle*" | head -n 1)
+          REAL_ROOT=$(dirname "$CONF_FILE")
+          echo "REAL_ROOT is: $REAL_ROOT"
           
-          # 2. Inject your modded files from the folder above (..)
-          echo "Injecting mods..."
-          cp -f ../MemoryManagerService.java app/src/main/java/com/winlator/core/ || echo "File 1 skipped"
-          cp -f ../thermal_patch.java app/src/main/java/com/winlator/core/ || echo "File 2 skipped"
-
-          # 3. Start the build
-          # We use the global gradle because the project's 'gradlew' is often missing in zips
-          gradle assembleRelease --no-daemon
+          # 2. FIND the core folder for injection
+          CORE_DIR=$(find . -type d -name "core" | grep "com/winlator" | head -n 1)
+          echo "CORE_DIR is: $CORE_DIR"
+          
+          # 3. Inject mods using absolute paths so we don't get lost
+          cp -f "$GITHUB_WORKSPACE/MemoryManagerService.java" "$CORE_DIR/" || echo "Mod 1 failed"
+          cp -f "$GITHUB_WORKSPACE/thermal_patch.java" "$CORE_DIR/" || echo "Mod 2 failed"
+          
+          # 4. Jump into the root and build
+          cd "$REAL_ROOT"
+          
+          # Check for gradlew first, fallback to global gradle
+          if [ -f "gradlew" ]; then
+            chmod +x gradlew
+            ./gradlew assembleRelease --no-daemon
+          else
+            gradle assembleRelease --no-daemon
+          fi
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
