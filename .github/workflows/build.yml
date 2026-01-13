@@ -14,9 +14,7 @@ jobs:
       - name: Download Winlator
         run: |
           curl -L https://github.com/brunodev85/winlator/archive/refs/heads/main.zip -o winlator.zip
-          unzip winlator.zip
-          # We just want to find the folder name for the next step
-          ls -d */ | grep winlator
+          unzip -q winlator.zip
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -26,8 +24,12 @@ jobs:
 
       - name: Build APK
         run: |
-          # We find the folder and GO INSIDE it to build
-          cd winlator-main
+          # 1. Find the EXACT directory where gradlew is hiding
+          GRADLE_DIR=$(find . -name gradlew -exec dirname {} \;)
+          echo "Robot is moving to: $GRADLE_DIR"
+          cd "$GRADLE_DIR"
+          
+          # 2. Give permissions and start
           chmod +x gradlew
           ./gradlew assembleRelease
 
@@ -35,4 +37,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Winlator-Custom-APK
-          path: winlator-main/app/build/outputs/apk/release/*.apk
+          path: "**/build/outputs/apk/release/*.apk"
