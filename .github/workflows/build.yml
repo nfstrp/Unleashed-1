@@ -15,9 +15,10 @@ jobs:
 
     - name: Clone Winlator Source
       run: |
-        git clone https://github.com/brunodev85/winlator.git winlator_src
-        cp -r winlator_src/* .
-        rm -rf winlator_src
+          export GIT_LFS_SKIP_SMUDGE=1
+          git clone --depth 1 https://github.com/brunodev85/winlator.git winlator_src
+          cp -r winlator_src/* .
+          rm -rf winlator_src
 
     - name: Set up JDK 17
       uses: actions/setup-java@v4
