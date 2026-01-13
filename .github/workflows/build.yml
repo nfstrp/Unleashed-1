@@ -12,7 +12,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Clone Winlator (Bypass Budget Error)
+      - name: Clone Winlator (Budget Bypass)
         run: |
           export GIT_LFS_SKIP_SMUDGE=1
           git clone --depth 1 https://github.com/brunodev85/winlator.git winlator_src
