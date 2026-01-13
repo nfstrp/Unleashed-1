@@ -11,27 +11,12 @@ jobs:
       - name: Checkout Your Files
         uses: actions/checkout@v4
 
-      - name: Download and Force Merge
+      - name: Download Winlator
         run: |
-          # 1. Download the zip
-          curl -L https://github.com/brunodev85/winlator/archive/refs/heads/main.zip -o source.zip
-          unzip -q source.zip
-          
-          # 2. Find the folder (whatever it's named) and move everything out
-          # This works even if the folder is named 'winlator-main' or something else
-          FOLDER=$(find . -maxdepth 1 -type d -name "*winlator*" | head -n 1)
-          cp -rn $FOLDER/. .
-          
-          # 3. Verify the file is here now
-          if [ -f "gradlew" ]; then echo "FOUND GRADLEW"; else echo "STILL MISSING"; fi
-
-      - name: Inject Custom Java Files
-        run: |
-          # Force copy your modded files into the core directory
-          # We use a broad search to ensure it finds the right 'core' folder
-          CORE_DIR=$(find . -type d -name "core" | grep "com/winlator" | head -n 1)
-          cp -f MemoryManagerService.java "$CORE_DIR/" || true
-          cp -f thermal_patch.java "$CORE_DIR/" || true
+          curl -L https://github.com/brunodev85/winlator/archive/refs/heads/main.zip -o winlator.zip
+          unzip winlator.zip
+          # We just want to find the folder name for the next step
+          ls -d */ | grep winlator
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -41,6 +26,8 @@ jobs:
 
       - name: Build APK
         run: |
+          # We find the folder and GO INSIDE it to build
+          cd winlator-main
           chmod +x gradlew
           ./gradlew assembleRelease
 
@@ -48,4 +35,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Winlator-Custom-APK
-          path: app/build/outputs/apk/release/*.apk
+          path: winlator-main/app/build/outputs/apk/release/*.apk
