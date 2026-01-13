@@ -39,11 +39,20 @@ jobs:
         echo "Root directory contents:"
         ls -la
         
-        echo "Checking for settings.gradle:"
-        if [ -f "settings.gradle" ]; then
-          echo "✓ settings.gradle found"
+        echo "Checking for Gradle settings file:"
+        if [ -f "settings.gradle" ] || [ -f "settings.gradle.kts" ]; then
+          echo "✓ Gradle settings file found"
+          ls -l settings.gradle* 2>/dev/null || true
         else
-          echo "✗ settings.gradle NOT found"
+          echo "⚠ No settings.gradle or settings.gradle.kts found"
+          echo "This may be a single-module project"
+        fi
+        
+        echo "Checking for build.gradle in app directory:"
+        if [ -f "app/build.gradle" ] || [ -f "app/build.gradle.kts" ]; then
+          echo "✓ app/build.gradle found"
+        else
+          echo "✗ app/build.gradle NOT found"
           exit 1
         fi
         
