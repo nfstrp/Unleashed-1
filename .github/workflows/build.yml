@@ -11,10 +11,17 @@ jobs:
       - name: Checkout Your Files
         uses: actions/checkout@v4
 
-      - name: Download Source
+      - name: Download and Flatten Source
         run: |
+          # 1. Download
           curl -L https://github.com/brunodev85/winlator/archive/refs/heads/main.zip -o main.zip
           unzip -q main.zip
+          
+          # 2. Force move everything from the subfolder to the ROOT
+          # This puts settings.gradle exactly where the robot is looking
+          cp -rf winlator-main/* .
+          cp -rf winlator-main/.* . || true
+          rm -rf winlator-main main.zip
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -22,24 +29,16 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Targeted Build
+      - name: Inject and Build
         run: |
-          # 1. Search ONLY inside the winlator-main folder for the map
-          CONF_FILE=$(find winlator-main -name "settings.gradle*" | head -n 1)
-          REAL_ROOT=$(dirname "$CONF_FILE")
-          echo "REAL_ROOT is: $REAL_ROOT"
+          # 1. Inject mods (Path is now simple because we flattened the folders)
+          CORE_DIR="app/src/main/java/com/winlator/core"
+          echo "Injecting into $CORE_DIR"
+          cp -f MemoryManagerService.java "$CORE_DIR/" || echo "Mod 1 skipped"
+          cp -f thermal_patch.java "$CORE_DIR/" || echo "Mod 2 skipped"
           
-          # 2. Inject mods using absolute paths
-          CORE_DIR=$(find winlator-main -type d -name "core" | grep "com/winlator" | head -n 1)
-          echo "CORE_DIR is: $CORE_DIR"
-          
-          cp -f "$GITHUB_WORKSPACE/MemoryManagerService.java" "$CORE_DIR/" || echo "Mod 1 failed"
-          cp -f "$GITHUB_WORKSPACE/thermal_patch.java" "$CORE_DIR/" || echo "Mod 2 failed"
-          
-          # 3. Enter the REAL root and build
-          cd "$REAL_ROOT"
-          
-          # Use the project's own gradlew if possible, otherwise global
+          # 2. Build using the local gradlew (it MUST be here now)
+          # If it's still missing, we fallback to global
           if [ -f "gradlew" ]; then
             chmod +x gradlew
             ./gradlew assembleRelease --no-daemon
@@ -51,4 +50,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Winlator-Custom-APK
-          path: "**/build/outputs/apk/release/*.apk"
+          path: app/build/outputs/apk/release/*.apk
