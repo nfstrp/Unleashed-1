@@ -30,9 +30,19 @@ jobs:
     
     - name: Flatten directory structure (including hidden files)
       run: |
+        # First, let's see what's actually in winlator-main
+        echo "=== Contents of winlator-main directory ==="
+        ls -la winlator-main/
+        
+        echo ""
+        echo "=== Checking for gradlew specifically ==="
+        find winlator-main -name "gradlew" -o -name "gradlew.bat"
+        
         # Move all contents from winlator-main to workspace root
-        shopt -s dotglob
-        mv winlator-main/* ./
+        # Using find/exec to ensure we get everything
+        find winlator-main -mindepth 1 -maxdepth 1 -exec mv {} ./ \;
+        
+        # Remove the now-empty directory
         rmdir winlator-main
         
         # Verify the structure
