@@ -11,18 +11,25 @@ jobs:
       - name: Checkout Your Files
         uses: actions/checkout@v4
 
-      - name: Download and Merge Winlator
+      - name: Download and Force Merge
         run: |
-          wget https://github.com/brunodev85/winlator/archive/refs/heads/main.zip
-          unzip -q main.zip
-          # The dot after 'winlator-main/.' is the secret trick to move hidden files
-          cp -rf winlator-main/. .
-          rm -rf winlator-main main.zip
+          # 1. Download the zip
+          curl -L https://github.com/brunodev85/winlator/archive/refs/heads/main.zip -o source.zip
+          unzip -q source.zip
+          
+          # 2. Find the folder (whatever it's named) and move everything out
+          # This works even if the folder is named 'winlator-main' or something else
+          FOLDER=$(find . -maxdepth 1 -type d -name "*winlator*" | head -n 1)
+          cp -rn $FOLDER/. .
+          
+          # 3. Verify the file is here now
+          if [ -f "gradlew" ]; then echo "FOUND GRADLEW"; else echo "STILL MISSING"; fi
 
       - name: Inject Custom Java Files
         run: |
-          # Finding the exact folder to place your modded files
-          CORE_DIR=$(find app/src/main/java -name "core" -type d | head -n 1)
+          # Force copy your modded files into the core directory
+          # We use a broad search to ensure it finds the right 'core' folder
+          CORE_DIR=$(find . -type d -name "core" | grep "com/winlator" | head -n 1)
           cp -f MemoryManagerService.java "$CORE_DIR/" || true
           cp -f thermal_patch.java "$CORE_DIR/" || true
 
@@ -34,8 +41,6 @@ jobs:
 
       - name: Build APK
         run: |
-          # Checking if the file exists before running
-          ls -la gradlew
           chmod +x gradlew
           ./gradlew assembleRelease
 
