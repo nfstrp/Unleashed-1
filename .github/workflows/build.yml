@@ -24,13 +24,16 @@ jobs:
 
       - name: Find Project and Build
         run: |
-          # 1. Hunt for the folder that actually contains 'settings.gradle'
-          REAL_ROOT=$(find . -name "settings.gradle" -exec dirname {} \; | head -n 1)
+          # 1. Find the folder containing ANY settings.gradle file
+          # We use a wildcard * to catch .gradle or .gradle.kts
+          CONF_FILE=$(find . -name "settings.gradle*" | head -n 1)
+          REAL_ROOT=$(dirname "$CONF_FILE")
+          
           echo "Target project found at: $REAL_ROOT"
           cd "$REAL_ROOT"
 
           # 2. Inject your modded files
-          # We search for the 'core' folder inside our current target
+          # We use the full path from your previous log to be safe
           CORE_DIR=$(find . -type d -name "core" | grep "com/winlator" | head -n 1)
           if [ -n "$CORE_DIR" ]; then
             echo "Injecting into $CORE_DIR"
@@ -38,10 +41,9 @@ jobs:
             cp -f $GITHUB_WORKSPACE/thermal_patch.java "$CORE_DIR/" || true
           fi
 
-          # 3. Use the Gradle Tool that came with the project (Wrapper)
-          # This is much safer than the Global Gradle
-          chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon
+          # 3. Build using Global Gradle
+          # We'll use the system gradle to avoid the 'gradlew missing' error entirely
+          gradle assembleRelease --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
