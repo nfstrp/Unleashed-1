@@ -11,18 +11,21 @@ jobs:
       - name: Checkout Your Files
         uses: actions/checkout@v4
 
-      - name: Download Winlator Source (No Budget Limit)
+      - name: Force Download Winlator
         run: |
-          # Download the source code as a ZIP to bypass LFS/Budget errors
+          # Use curl to get the zip and unzip it into the current folder
           curl -L https://github.com/brunodev85/winlator/archive/refs/heads/main.zip -o winlator.zip
-          unzip winlator.zip
-          mv winlator-main winlator_engine
+          unzip -q winlator.zip
+          # Move everything from the unzipped folder to the main area
+          cp -rf winlator-main/* .
+          cp -rf winlator-main/.* . || true
 
       - name: Inject Your Custom Files
         run: |
-          # Find your edited file and force it into the official source code
-          # If you have multiple files, this finds them all by name
-          find . -maxdepth 1 -name "*.java" -exec cp {} winlator_engine/app/src/main/java/com/winlator/core/ \; 2>/dev/null || true
+          # Move your edited files into the source code
+          # This replaces the default files with your modded ones
+          cp -f MemoryManagerService.java app/src/main/java/com/winlator/core/ || true
+          cp -f thermal_patch.java app/src/main/java/com/winlator/core/ || true
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -32,12 +35,13 @@ jobs:
 
       - name: Build APK
         run: |
-          cd winlator_engine
-          chmod +x gradlew
-          ./gradlew assembleRelease
+          # The "find" command ensures we find gradlew even if it's buried
+          GRADLE_PATH=$(find . -name gradlew)
+          chmod +x $GRADLE_PATH
+          $GRADLE_PATH assembleRelease
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: Winlator-Custom-APK
-          path: winlator_engine/app/build/outputs/apk/release/*.apk
+          path: "**/build/outputs/apk/release/*.apk"
