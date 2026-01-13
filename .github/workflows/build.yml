@@ -11,11 +11,12 @@ jobs:
       - name: Checkout Your Files
         uses: actions/checkout@v4
         with:
-          path: my-repo # Puts your Java files in a separate folder
+          path: my-repo
 
-      - name: Clone Winlator Source
+      - name: Clone Winlator (Ignore LFS)
         run: |
-          # Clone only the latest commit to save space and time
+          # We disable LFS so the build doesn't crash on the missing image file
+          export GIT_LFS_SKIP_SMUDGE=1
           git clone --depth 1 https://github.com/brunodev85/winlator.git winlator-src
 
       - name: Set up JDK 17
@@ -34,7 +35,7 @@ jobs:
           cp -f ../my-repo/MemoryManagerService.java "$CORE_DIR/" || echo "Mod 1 skipped"
           cp -f ../my-repo/thermal_patch.java "$CORE_DIR/" || echo "Mod 2 skipped"
           
-          # 2. Build using the included gradlew (Git clone always includes this)
+          # 2. Build the APK
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon
 
