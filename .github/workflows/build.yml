@@ -11,7 +11,7 @@ jobs:
       - name: Checkout Your Files
         uses: actions/checkout@v4
 
-      - name: Download Winlator Source
+      - name: Download Source
         run: |
           curl -L https://github.com/brunodev85/winlator/archive/refs/heads/main.zip -o main.zip
           unzip -q main.zip
@@ -22,27 +22,18 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Find Project and Build
+      - name: Force Build inside winlator-main
         run: |
-          # 1. Find the folder containing ANY settings.gradle file
-          # We use a wildcard * to catch .gradle or .gradle.kts
-          CONF_FILE=$(find . -name "settings.gradle*" | head -n 1)
-          REAL_ROOT=$(dirname "$CONF_FILE")
+          # 1. Enter the specific folder we know exists
+          cd winlator-main
           
-          echo "Target project found at: $REAL_ROOT"
-          cd "$REAL_ROOT"
+          # 2. Inject your modded files from the folder above (..)
+          echo "Injecting mods..."
+          cp -f ../MemoryManagerService.java app/src/main/java/com/winlator/core/ || echo "File 1 skipped"
+          cp -f ../thermal_patch.java app/src/main/java/com/winlator/core/ || echo "File 2 skipped"
 
-          # 2. Inject your modded files
-          # We use the full path from your previous log to be safe
-          CORE_DIR=$(find . -type d -name "core" | grep "com/winlator" | head -n 1)
-          if [ -n "$CORE_DIR" ]; then
-            echo "Injecting into $CORE_DIR"
-            cp -f $GITHUB_WORKSPACE/MemoryManagerService.java "$CORE_DIR/" || true
-            cp -f $GITHUB_WORKSPACE/thermal_patch.java "$CORE_DIR/" || true
-          fi
-
-          # 3. Build using Global Gradle
-          # We'll use the system gradle to avoid the 'gradlew missing' error entirely
+          # 3. Start the build
+          # We use the global gradle because the project's 'gradlew' is often missing in zips
           gradle assembleRelease --no-daemon
 
       - name: Upload APK
