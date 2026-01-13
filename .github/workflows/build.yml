@@ -13,7 +13,6 @@ jobs:
 
       - name: Download Source
         run: |
-          # Download the zip
           wget https://github.com/brunodev85/winlator/archive/refs/heads/main.zip
           unzip -q main.zip
 
@@ -23,29 +22,24 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Find and Build
+      - name: Locate Parent and Build
         run: |
-          # 1. Use 'find' to locate the build.gradle file (the heart of the project)
-          # We take the directory name (dirname) of wherever it is hiding
-          PROJECT_ROOT=$(find . -name build.gradle -type f | head -n 1 | xargs dirname)
-          
-          echo "Found project in: $PROJECT_ROOT"
+          # 1. We look for 'settings.gradle' which is ONLY in the root folder
+          PROJECT_ROOT=$(find . -name settings.gradle -type f | head -n 1 | xargs dirname)
+          echo "Moving to CORRECT root: $PROJECT_ROOT"
           cd "$PROJECT_ROOT"
 
-          # 2. Inject your files (We know exactly where we are now)
-          # We look for the 'core' folder RELATIVE to where we are
+          # 2. Now that we are in the root, we can find the core folder correctly
+          # The path is definitely 'app/src/main/java/...' relative to here
           CORE_DIR=$(find app/src/main/java -name "core" -type d | head -n 1)
-          if [ -n "$CORE_DIR" ]; then
-             echo "Injecting mods into $CORE_DIR"
-             # We assume your mod files are in the main workspace root ($GITHUB_WORKSPACE)
-             cp -f $GITHUB_WORKSPACE/MemoryManagerService.java "$CORE_DIR/" || true
-             cp -f $GITHUB_WORKSPACE/thermal_patch.java "$CORE_DIR/" || true
-          else
-             echo "Could not find core folder, skipping injection"
-          fi
+          
+          echo "Injecting mods into: $CORE_DIR"
+          # Copy files from the GitHub Workspace (where your repo files are)
+          cp -f $GITHUB_WORKSPACE/MemoryManagerService.java "$CORE_DIR/" || echo "No MemoryManager found"
+          cp -f $GITHUB_WORKSPACE/thermal_patch.java "$CORE_DIR/" || echo "No ThermalPatch found"
 
-          # 3. Run the Global Gradle (since gradlew is missing)
-          # The --no-daemon flag prevents it from getting stuck
+          # 3. Build using Global Gradle
+          # We use the global tool because it's more reliable than the wrapper here
           gradle assembleRelease --no-daemon
 
       - name: Upload APK
