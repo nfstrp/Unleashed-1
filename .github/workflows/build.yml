@@ -10,14 +10,15 @@ jobs:
     steps:
       - name: Checkout Your Files
         uses: actions/checkout@v4
-        with:
-          path: my-repo
 
-      - name: Clone Winlator (Ignore LFS)
+      - name: Download and Prepare Winlator
         run: |
-          # We disable LFS so the build doesn't crash on the missing image file
-          export GIT_LFS_SKIP_SMUDGE=1
-          git clone --depth 1 https://github.com/brunodev85/winlator.git winlator-src
+          # 1. Download the source zip
+          curl -L https://github.com/brunodev85/winlator/archive/refs/heads/main.zip -o source.zip
+          unzip -q source.zip
+          
+          # 2. Rename the folder to something simple
+          mv winlator-main winlator-src
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -27,17 +28,16 @@ jobs:
 
       - name: Inject and Build
         run: |
-          cd winlator-src
-          
-          # 1. Inject mods from your repo folder
-          CORE_DIR="app/src/main/java/com/winlator/core"
+          # 1. Inject mods (using full paths to be safe)
+          CORE_DIR="winlator-src/app/src/main/java/com/winlator/core"
           echo "Injecting into $CORE_DIR"
-          cp -f ../my-repo/MemoryManagerService.java "$CORE_DIR/" || echo "Mod 1 skipped"
-          cp -f ../my-repo/thermal_patch.java "$CORE_DIR/" || echo "Mod 2 skipped"
+          cp -f MemoryManagerService.java "$CORE_DIR/" || echo "Mod 1 skipped"
+          cp -f thermal_patch.java "$CORE_DIR/" || echo "Mod 2 skipped"
           
-          # 2. Build the APK
-          chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon
+          # 2. Build using the system Gradle
+          # We tell it exactly where the project is
+          cd winlator-src
+          gradle assembleRelease --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
