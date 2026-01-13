@@ -13,19 +13,20 @@ jobs:
 
       - name: Download and Force Extract
         run: |
-          # 1. Download
+          # 1. Download source
           curl -L https://github.com/brunodev85/winlator/archive/refs/heads/main.zip -o source.zip
-          
-          # 2. Extract specifically into the current folder
           unzip -q source.zip
           
-          # 3. Use 'dot-globbing' to move everything including hidden files
+          # 2. Delete the conflicting folder in the root to make room
+          rm -rf .github
+          
+          # 3. Move everything including hidden files (dotglob)
           shopt -s dotglob
-          mv winlator-main/* .
+          cp -rf winlator-main/* .
           rm -rf winlator-main source.zip
           
-          # 4. Debug: Check if settings file exists
-          ls -F
+          # 4. Verify the map exists
+          ls -F | grep "settings.gradle"
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -37,11 +38,11 @@ jobs:
         run: |
           # 1. Inject mods
           CORE_DIR="app/src/main/java/com/winlator/core"
+          mkdir -p "$CORE_DIR"
           cp -f MemoryManagerService.java "$CORE_DIR/" || echo "Mod 1 skipped"
           cp -f thermal_patch.java "$CORE_DIR/" || echo "Mod 2 skipped"
           
-          # 2. Force Gradle to find the settings file by naming the project root
-          # We use '--project-dir .' to tell it "Build exactly what is here"
+          # 2. Run Gradle with the direct project directory pointer
           gradle assembleRelease --project-dir . --no-daemon
 
       - name: Upload APK
