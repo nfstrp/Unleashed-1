@@ -13,21 +13,9 @@ jobs:
 
       - name: Download Source
         run: |
-          # Download and unzip the code
+          # Download the zip
           wget https://github.com/brunodev85/winlator/archive/refs/heads/main.zip
           unzip -q main.zip
-
-      - name: Inject Your Mod
-        run: |
-          # We go into the folder and copy your files from the outside
-          cd winlator-main
-          
-          # Find where to put the files (The "Core" folder)
-          CORE_DIR=$(find app/src/main/java -type d -name "core" | head -n 1)
-          
-          # Copy your files from the previous folder (..) into the Core folder
-          cp -f ../MemoryManagerService.java "$CORE_DIR/" || true
-          cp -f ../thermal_patch.java "$CORE_DIR/" || true
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -35,14 +23,33 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Build APK (Global Mode)
+      - name: Find and Build
         run: |
-          cd winlator-main
-          # We use 'gradle' instead of './gradlew' because the file is missing
+          # 1. Use 'find' to locate the build.gradle file (the heart of the project)
+          # We take the directory name (dirname) of wherever it is hiding
+          PROJECT_ROOT=$(find . -name build.gradle -type f | head -n 1 | xargs dirname)
+          
+          echo "Found project in: $PROJECT_ROOT"
+          cd "$PROJECT_ROOT"
+
+          # 2. Inject your files (We know exactly where we are now)
+          # We look for the 'core' folder RELATIVE to where we are
+          CORE_DIR=$(find app/src/main/java -name "core" -type d | head -n 1)
+          if [ -n "$CORE_DIR" ]; then
+             echo "Injecting mods into $CORE_DIR"
+             # We assume your mod files are in the main workspace root ($GITHUB_WORKSPACE)
+             cp -f $GITHUB_WORKSPACE/MemoryManagerService.java "$CORE_DIR/" || true
+             cp -f $GITHUB_WORKSPACE/thermal_patch.java "$CORE_DIR/" || true
+          else
+             echo "Could not find core folder, skipping injection"
+          fi
+
+          # 3. Run the Global Gradle (since gradlew is missing)
+          # The --no-daemon flag prevents it from getting stuck
           gradle assembleRelease --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: Winlator-Custom-APK
-          path: winlator-main/app/build/outputs/apk/release/*.apk
+          path: "**/build/outputs/apk/release/*.apk"
