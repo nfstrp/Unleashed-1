@@ -22,26 +22,24 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: The Final Stand
+      - name: Targeted Build
         run: |
-          # 1. FIND the project root (where settings.gradle is)
-          # We search deep to find the real heart of the project
-          CONF_FILE=$(find . -name "settings.gradle*" | head -n 1)
+          # 1. Search ONLY inside the winlator-main folder for the map
+          CONF_FILE=$(find winlator-main -name "settings.gradle*" | head -n 1)
           REAL_ROOT=$(dirname "$CONF_FILE")
           echo "REAL_ROOT is: $REAL_ROOT"
           
-          # 2. FIND the core folder for injection
-          CORE_DIR=$(find . -type d -name "core" | grep "com/winlator" | head -n 1)
+          # 2. Inject mods using absolute paths
+          CORE_DIR=$(find winlator-main -type d -name "core" | grep "com/winlator" | head -n 1)
           echo "CORE_DIR is: $CORE_DIR"
           
-          # 3. Inject mods using absolute paths so we don't get lost
           cp -f "$GITHUB_WORKSPACE/MemoryManagerService.java" "$CORE_DIR/" || echo "Mod 1 failed"
           cp -f "$GITHUB_WORKSPACE/thermal_patch.java" "$CORE_DIR/" || echo "Mod 2 failed"
           
-          # 4. Jump into the root and build
+          # 3. Enter the REAL root and build
           cd "$REAL_ROOT"
           
-          # Check for gradlew first, fallback to global gradle
+          # Use the project's own gradlew if possible, otherwise global
           if [ -f "gradlew" ]; then
             chmod +x gradlew
             ./gradlew assembleRelease --no-daemon
