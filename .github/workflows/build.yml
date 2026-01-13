@@ -15,28 +15,28 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Prepare Project
+      - name: Prepare Winlator Source
         run: |
-          # 1. Download and unzip
+          # 1. Download and extract
           curl -L https://github.com/brunodev85/winlator/archive/refs/heads/main.zip -o source.zip
           unzip -q source.zip
           
-          # 2. CLEAR THE ROOT and move winlator files there
-          # This ensures settings.gradle is exactly where Gradle looks
-          cp -rf winlator-main/* .
+          # 2. Force move everything (including hidden files) to the root
+          # This makes settings.gradle visible to the build tool
+          cp -rf winlator-main/. .
           
-          # 3. Inject your custom files into the now-flat structure
-          CORE_PATH="app/src/main/java/com/winlator/core"
-          cp -f MemoryManagerService.java "$CORE_PATH/"
-          cp -f thermal_patch.java "$CORE_PATH/"
+          # 3. Inject your custom files
+          mkdir -p app/src/main/java/com/winlator/core
+          cp -f MemoryManagerService.java app/src/main/java/com/winlator/core/
+          cp -f thermal_patch.java app/src/main/java/com/winlator/core/
 
       - name: Build APK
         run: |
-          # Use the wrapper that comes with Winlator
+          # Use the local wrapper which is now definitely in the root
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon
 
-      - name: Upload
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: Winlator-Modded
