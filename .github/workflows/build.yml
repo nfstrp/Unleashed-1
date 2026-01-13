@@ -11,10 +11,23 @@ jobs:
       - name: Checkout Your Files
         uses: actions/checkout@v4
 
-      - name: Download Winlator
+      - name: Download Source
         run: |
-          curl -L https://github.com/brunodev85/winlator/archive/refs/heads/main.zip -o winlator.zip
-          unzip -q winlator.zip
+          # Download and unzip the code
+          wget https://github.com/brunodev85/winlator/archive/refs/heads/main.zip
+          unzip -q main.zip
+
+      - name: Inject Your Mod
+        run: |
+          # We go into the folder and copy your files from the outside
+          cd winlator-main
+          
+          # Find where to put the files (The "Core" folder)
+          CORE_DIR=$(find app/src/main/java -type d -name "core" | head -n 1)
+          
+          # Copy your files from the previous folder (..) into the Core folder
+          cp -f ../MemoryManagerService.java "$CORE_DIR/" || true
+          cp -f ../thermal_patch.java "$CORE_DIR/" || true
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -22,19 +35,14 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Build APK
+      - name: Build APK (Global Mode)
         run: |
-          # 1. Find the EXACT directory where gradlew is hiding
-          GRADLE_DIR=$(find . -name gradlew -exec dirname {} \;)
-          echo "Robot is moving to: $GRADLE_DIR"
-          cd "$GRADLE_DIR"
-          
-          # 2. Give permissions and start
-          chmod +x gradlew
-          ./gradlew assembleRelease
+          cd winlator-main
+          # We use 'gradle' instead of './gradlew' because the file is missing
+          gradle assembleRelease --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: Winlator-Custom-APK
-          path: "**/build/outputs/apk/release/*.apk"
+          path: winlator-main/app/build/outputs/apk/release/*.apk
